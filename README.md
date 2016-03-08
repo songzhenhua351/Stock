@@ -7,12 +7,13 @@
     结果输出到终端
 
 使用:
-    例如: 查询 智慧农业 sz000816
-    输入 python stock_terminal.py sz000816
-    支持查询多个股票
-
+    查询 智慧农业 sz000816
     例如:
-    python stock_terminal.py sh601003,sz000816,sz000778,ss600221
+        python stock_terminal.py sz000816
+    
+    支持查询多个股票
+    例如:
+        python stock_terminal.py sh601003,sz000816,sz000778,ss600221
 
 实现:
     通过调用新浪股票API，实时查询股票价格
