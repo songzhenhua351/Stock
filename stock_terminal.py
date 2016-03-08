@@ -24,14 +24,15 @@ class Worker(threading.Thread):
 
     def run(self):
         while True:
-            func, arg = self.work_queue.get()
-            res = func(arg)
+            func, arg, code_index = self.work_queue.get()
+            res = func(arg, code_index)
             self.result_queue.put(res)
             if self.result_queue.full():
-                res = [self.result_queue.get() for i in range(self.result_queue.qsize())]
+                res = sorted([self.result_queue.get() for i in range(self.result_queue.qsize())], key=lambda s: s[0], reverse=True)
+                res.insert(0, ('0', u'名称     股价'))
                 print '***** start *****'
                 for obj in res:
-                    print obj
+                    print obj[1]
                 print '***** end *****\n'
             self.work_queue.task_done()
 
@@ -48,16 +49,16 @@ class Stock(object):
     def __init_thread_poll(self, thread_num):
         self.params = self.code.split(',')
         self.params.extend(['s_sh000001', 's_sz399001'])  # 默认获取沪指、深指
-        self.result_queue = Queue(maxsize=len(self.params))
+        self.result_queue = Queue(maxsize=len(self.params[::-1]))
         for i in range(thread_num):
             self.threads.append(Worker(self.work_queue, self.result_queue))
 
-    def __add_work(self, stock_code):
-        self.work_queue.put((self.value_get, stock_code))
+    def __add_work(self, stock_code, code_index):
+        self.work_queue.put((self.value_get, stock_code, code_index))
 
     def del_params(self):
         for obj in self.params:
-            self.__add_work(obj)
+            self.__add_work(obj, self.params.index(obj))
 
     def wait_all_complete(self):
         for thread in self.threads:
@@ -65,14 +66,14 @@ class Stock(object):
                 thread.join()
 
     @classmethod
-    def value_get(cls, code):
+    def value_get(cls, code, code_index):
         slice_num, value_num = 21, 3
         if code in ['s_sh000001', 's_sz399001']:
             slice_num = 23
             value_num = 1
         r = requests.get("http://hq.sinajs.cn/list=%s" % (code,))
         name, now = r.text.split(',')[0][slice_num:], r.text.split(',')[value_num]
-        return name + now
+        return code_index, name + ' ' + now
 
 
 if __name__ == '__main__':
