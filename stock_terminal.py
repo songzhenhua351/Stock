@@ -11,11 +11,11 @@ import sys
 import threading
 
 from Queue import Queue
-
-SLEEP_TIME = 6
+from optparse import OptionParser
 
 
 class Worker(threading.Thread):
+    """多线程获取"""
     def __init__(self, work_queue, result_queue):
         threading.Thread.__init__(self)
         self.work_queue = work_queue
@@ -24,30 +24,30 @@ class Worker(threading.Thread):
 
     def run(self):
         while True:
-            func, args = self.work_queue.get()
-            res = func(args)
+            func, arg = self.work_queue.get()
+            res = func(arg)
             self.result_queue.put(res)
             if self.result_queue.full():
                 res = [self.result_queue.get() for i in range(self.result_queue.qsize())]
+                print '***** start *****'
                 for obj in res:
                     print obj
+                print '***** end *****\n'
             self.work_queue.task_done()
 
 
 class Stock(object):
     """股票实时价格获取"""
 
-    THREAD_NUM = 5
-
-    def __init__(self, code):
+    def __init__(self, code, thread_num):
         self.code = code
         self.work_queue = Queue()
         self.threads = []
-        self.__init_thread_poll(self.THREAD_NUM)
+        self.__init_thread_poll(thread_num)
 
     def __init_thread_poll(self, thread_num):
         self.params = self.code.split(',')
-        self.params.extend(['s_sh000001', 's_sz399001'])
+        self.params.extend(['s_sh000001', 's_sz399001'])  # 默认获取沪指、深指
         self.result_queue = Queue(maxsize=len(self.params))
         for i in range(thread_num):
             self.threads.append(Worker(self.work_queue, self.result_queue))
@@ -76,12 +76,21 @@ class Stock(object):
 
 
 if __name__ == '__main__':
-    assert len(sys.argv) > 1, "Please enter the stock code!"  # 是否输入股票代码
+    parser = OptionParser(description="Query the stock's value.", usage="%prog [-c] [-s] [-t]", version="%prog 1.0")
+    parser.add_option('-c', '--stock-code', dest='codes',
+                      help="the stock's code that you want to query.")
+    parser.add_option('-s', '--sleep-time', dest='sleep_time', default=6, type="int",
+                      help='How long does it take to check one more time.')
+    parser.add_option('-t', '--thread-num', dest='thread_num', default=3, type='int',
+                      help="thread num.")
+    options, args = parser.parse_args(args=sys.argv[1:])
 
-    if filter(lambda s: s[:-6] not in ('sh', 'sz', 's_sh', 's_sz'), sys.argv[1].split(',')):  # 股票代码输入是否正确
+    assert options.codes, "Please enter the stock code!"  # 是否输入股票代码
+    if filter(lambda s: s[:-6] not in ('sh', 'sz', 's_sh', 's_sz'), options.codes.split(',')):  # 股票代码输入是否正确
         raise ValueError
 
-    stock = Stock(sys.argv[1])
+    stock = Stock(options.codes, options.thread_num)
+
     while True:
         stock.del_params()
-        time.sleep(SLEEP_TIME)
+        time.sleep(options.sleep_time)
