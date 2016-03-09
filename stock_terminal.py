@@ -68,11 +68,14 @@ class Stock(object):
     @classmethod
     def value_get(cls, code, code_index):
         slice_num, value_num = 21, 3
+        name, now = u'——无——', u'  ——无——'
         if code in ['s_sh000001', 's_sz399001']:
             slice_num = 23
             value_num = 1
         r = requests.get("http://hq.sinajs.cn/list=%s" % (code,))
-        name, now = r.text.split(',')[0][slice_num:], r.text.split(',')[value_num]
+        res = r.text.split(',')
+        if len(res) > 1:
+            name, now = r.text.split(',')[0][slice_num:], r.text.split(',')[value_num]
         return code_index, name + ' ' + now
 
 
