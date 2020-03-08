@@ -7,6 +7,7 @@
 ----
     实时查询股票价格，默认查询了沪指、深指
     结果输出到终端
+    stock_terminal1.py 增加了实时涨幅和昨日收盘价
 
 使用:
 ----
@@ -20,10 +21,14 @@
     查询 智慧农业 sz000816
     例如:
         python stock_terminal.py -c sz000816 -t 4 -s 3
+    or:
+        python stock_terminal.py -c sz000816 -t 4 -s 3
     
     支持查询多个股票
     例如:
-        python stock_terminal.py -c sh601003,sz000816,sz000778,ss600221
+        python stock_terminal.py -c sh601003,sz000816,sz000778
+    or:
+        python stock_terminal.py -c sh601003,sz000816,sz000778
 
 实现:
 ----

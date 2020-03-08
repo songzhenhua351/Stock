@@ -29,7 +29,7 @@ class Worker(threading.Thread):
             self.result_queue.put(res)
             if self.result_queue.full():
                 res = sorted([self.result_queue.get() for i in range(self.result_queue.qsize())], key=lambda s: s[0], reverse=True)
-                res.insert(0, ('0', u'名称     股价	涨跌率	昨日价格'))
+                res.insert(0, ('0', u'名称     股价	实时涨幅	昨日价格'))
                 print ('***** start *****')
                 for obj in res:
                     print (obj[1])
