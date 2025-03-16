@@ -1,16 +1,16 @@
 # -*-coding:utf-8 -*-
 # 
-# Created on 2016-03-04, by felix
+# Created on 2016-03-04, by Kyo
 # 
 
-__author__ = 'felix'
+__author__ = 'Kyo'
 
 import requests
 import time
 import sys
 import threading
 
-from Queue import Queue
+from queue import Queue
 from optparse import OptionParser
 
 
@@ -30,10 +30,10 @@ class Worker(threading.Thread):
             if self.result_queue.full():
                 res = sorted([self.result_queue.get() for i in range(self.result_queue.qsize())], key=lambda s: s[0], reverse=True)
                 res.insert(0, ('0', u'名称     股价'))
-                print '***** start *****'
+                print('***** start *****')
                 for obj in res:
-                    print obj[1]
-                print '***** end *****\n'
+                    print(obj[1])
+                print('***** end *****\n')
             self.work_queue.task_done()
 
 
@@ -72,10 +72,20 @@ class Stock(object):
         if code in ['s_sh000001', 's_sz399001']:
             slice_num = 23
             value_num = 1
-        r = requests.get("http://hq.sinajs.cn/list=%s" % (code,))
-        res = r.text.split(',')
-        if len(res) > 1:
-            name, now = r.text.split(',')[0][slice_num:], r.text.split(',')[value_num]
+        try:
+            url = f"http://hq.sinajs.cn/list={code}"
+            headers = {
+                'Referer': 'http://finance.sina.com.cn',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            r = requests.get(url, headers=headers)
+            r.encoding = 'gbk'  # 设置正确的编码
+            res = r.text.split(',')
+            if len(res) > 1:
+                name, now = r.text.split(',')[0][slice_num:], r.text.split(',')[value_num]
+                print(f"Debug - Response: {r.text}")  # 添加调试信息
+        except Exception as e:
+            print(f"Debug - Error: {str(e)}")  # 添加错误信息
         return code_index, name + ' ' + now
 
 
@@ -90,8 +100,11 @@ if __name__ == '__main__':
     options, args = parser.parse_args(args=sys.argv[1:])
 
     assert options.codes, "Please enter the stock code!"  # 是否输入股票代码
-    if filter(lambda s: s[:-6] not in ('sh', 'sz', 's_sh', 's_sz'), options.codes.split(',')):  # 股票代码输入是否正确
-        raise ValueError
+    codes = options.codes.split(',')
+    for code in codes:
+        prefix = code[:-6]
+        if prefix not in ('sh', 'sz', 's_sh', 's_sz'):
+            raise ValueError("请检查股票代码格式是否正确。股票代码应该是6位数字，上海股票以'600'，'601'，'603'开头，深圳股票以'000'或'300'开头")
 
     stock = Stock(options.codes, options.thread_num)
 
