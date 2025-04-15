@@ -55,6 +55,8 @@ def main():
         sys.exit(1)
         
     print(f"正在查询股票: {', '.join(codes)}")
+    print(f"正在查询股票: {', '.join(codes)}")
+
     
     # 初始化Stock对象并显示股票数据
     try:
