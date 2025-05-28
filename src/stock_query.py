@@ -1,25 +1,32 @@
 """
-股票查询工具主模块
+股票查询工具主模块 - 使用标准库实现
 """
 import json
 import os
 from datetime import datetime
 from typing import Dict, Optional, Tuple
-
-import pandas as pd
-import requests
-from rich.console import Console
-from rich.table import Table
-from rich.text import Text
+import csv
+from io import StringIO
 
 class StockQuery:
     """股票查询类"""
     
     def __init__(self):
-        self.console = Console()
+        self._setup_console_colors()
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Referer': 'http://finance.sina.com.cn'
+        }
+    
+    def _setup_console_colors(self):
+        """设置控制台颜色"""
+        self.COLORS = {
+            'red': '\033[91m',
+            'green': '\033[92m',
+            'cyan': '\033[96m',
+            'magenta': '\033[95m',
+            'bold': '\033[1m',
+            'end': '\033[0m'
         }
         
     def get_stock_data(self, code: str) -> Optional[Dict]:
@@ -27,17 +34,20 @@ class StockQuery:
         try:
             # 新浪股票API
             url = f"http://hq.sinajs.cn/list={code}"
-            response = requests.get(url, headers=self.headers)
-            response.encoding = 'gbk'
+            # 使用标准库urllib替代requests
+            from urllib import request, error
+            req = request.Request(url, headers=self.headers)
+            response = request.urlopen(req)
+            content = response.read().decode('gbk')
             
-            data = response.text.split('="')
+            data = content.split('="')
             if len(data) < 2:
-                self.console.print(f"[red]无法获取股票 {code} 的数据[/red]")
+                print(f"{self.COLORS['red']}无法获取股票 {code} 的数据{self.COLORS['end']}")
                 return None
                 
             values = data[1].split(',')
             if len(values) < 32:
-                self.console.print(f"[red]股票 {code} 数据不完整[/red]")
+                print(f"{self.COLORS['red']}股票 {code} 数据不完整{self.COLORS['end']}")
                 return None
                 
             # 获取公司信息
@@ -69,7 +79,7 @@ class StockQuery:
             return stock_data
             
         except Exception as e:
-            self.console.print(f"[red]获取股票数据时出错: {str(e)}[/red]")
+            print(f"{self.COLORS['red']}获取股票数据时出错: {str(e)}{self.COLORS['end']}")
             return None
             
     def get_company_info(self, code: str) -> Dict:
@@ -94,49 +104,46 @@ class StockQuery:
         if not data:
             return
             
-        # 创建主表格
-        table = Table(title=f"{data['name']} ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')}更新)",
-                     show_header=True, header_style="bold magenta")
+        # 显示标题
+        print(f"\n{self.COLORS['bold']}{self.COLORS['magenta']}===== {data['name']} ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')}更新) ====={self.COLORS['end']}\n")
         
-        # 添加列
-        table.add_column("指标", style="cyan", no_wrap=True)
-        table.add_column("数值", justify="right")
+        # 显示核心数据
+        change_color = 'red' if data['change'] >= 0 else 'green'
+        price_text = f"{self.COLORS[change_color]}{data['price']:.2f}{self.COLORS['end']}"
+        change_text = f"{self.COLORS[change_color]}{data['change']:+.2f}%{self.COLORS['end']}"
         
-        # 添加核心数据
-        change_color = "red" if data['change'] >= 0 else "green"
-        price_text = Text(f"{data['price']:.2f}", style=change_color)
-        change_text = Text(f"{data['change']:+.2f}%", style=change_color)
+        info_items = [
+            ("当前价格", price_text),
+            ("涨跌幅", change_text),
+            ("今日开盘", f"{data['open']:.2f}"),
+            ("今日最高", f"{data['high']:.2f}"),
+            ("今日最低", f"{data['low']:.2f}"),
+            ("成交量(手)", f"{data['volume']/100:.0f}"),
+            ("成交额(万)", f"{data['amount']/10000:.2f}"),
+            ("市盈率(P/E)", str(data['pe_ratio'])),
+            ("总市值", str(data['market_cap'])),
+            ("52周最高", str(data['week52_high'])),
+            ("52周最低", str(data['week52_low']))
+        ]
         
-        table.add_row("当前价格", price_text)
-        table.add_row("涨跌幅", change_text)
-        table.add_row("今日开盘", f"{data['open']:.2f}")
-        table.add_row("今日最高", f"{data['high']:.2f}")
-        table.add_row("今日最低", f"{data['low']:.2f}")
-        table.add_row("成交量(手)", f"{data['volume']/100:.0f}")
-        table.add_row("成交额(万)", f"{data['amount']/10000:.2f}")
-        table.add_row("市盈率(P/E)", str(data['pe_ratio']))
-        table.add_row("总市值", str(data['market_cap']))
-        table.add_row("52周最高", str(data['week52_high']))
-        table.add_row("52周最低", str(data['week52_low']))
-        
-        # 显示主表格
-        self.console.print(table)
+        for label, value in info_items:
+            print(f"{self.COLORS['cyan']}{label:<10}{self.COLORS['end']}: {value}")
         
         # 显示公司信息
-        self.console.print("\n[bold cyan]公司简介[/bold cyan]")
-        self.console.print(data['company_profile'])
+        print(f"\n{self.COLORS['bold']}{self.COLORS['cyan']}公司简介{self.COLORS['end']}")
+        print(data['company_profile'])
         
-        self.console.print("\n[bold cyan]主营业务[/bold cyan]")
-        self.console.print(data['main_business'])
+        print(f"\n{self.COLORS['bold']}{self.COLORS['cyan']}主营业务{self.COLORS['end']}")
+        print(data['main_business'])
         
-        self.console.print("\n[bold cyan]最新财务指标[/bold cyan]")
-        self.console.print(data['latest_finance'])
+        print(f"\n{self.COLORS['bold']}{self.COLORS['cyan']}最新财务指标{self.COLORS['end']}")
+        print(data['latest_finance'])
         
         # 显示公告
         if data['announcements']:
-            self.console.print("\n[bold cyan]重要公告[/bold cyan]")
+            print(f"\n{self.COLORS['bold']}{self.COLORS['cyan']}重要公告{self.COLORS['end']}")
             for announcement in data['announcements']:
-                self.console.print(f"• {announcement}")
+                print(f"• {announcement}")
 
 def main():
     """主函数"""
