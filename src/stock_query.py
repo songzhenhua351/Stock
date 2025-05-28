@@ -5,8 +5,9 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, Optional, Tuple
-import csv
-from io import StringIO
+import urllib.request
+import urllib.error
+import urllib.parse
 
 class StockQuery:
     """股票查询类"""
@@ -34,11 +35,14 @@ class StockQuery:
         try:
             # 新浪股票API
             url = f"http://hq.sinajs.cn/list={code}"
-            # 使用标准库urllib替代requests
-            from urllib import request, error
-            req = request.Request(url, headers=self.headers)
-            response = request.urlopen(req)
-            content = response.read().decode('gbk')
+            req = urllib.request.Request(url, headers=self.headers)
+            
+            try:
+                response = urllib.request.urlopen(req)
+                content = response.read().decode('gbk')
+            except urllib.error.URLError as e:
+                print(f"{self.COLORS['red']}网络连接错误: {str(e)}{self.COLORS['end']}")
+                return None
             
             data = content.split('="')
             if len(data) < 2:
